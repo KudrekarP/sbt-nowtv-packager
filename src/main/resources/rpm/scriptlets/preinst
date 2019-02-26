@@ -1,0 +1,11 @@
+# this replaces the default https://github.com/sbt/sbt-native-packager/blob/master/src/main/resources/com/typesafe/sbt/packager/archetypes/java_server/rpm/pre-template
+${{loader-functions}}
+
+echo "running --- preinst: $1"
+if [ "$1" = "1" -o "$1" = "install" ]; then
+  echo "...... Initial installation of ${{app_name}}"
+elif [ "$1" = "2" -o "$1" = "upgrade" ]; then
+  echo "...... Performing initial upgrade steps for installing ${{app_name}}"
+  echo "...... Shutting down ${{app_name}}"
+  stopService ${{app_name}} || echo "Could not stop ${{app_name}}"
+fi

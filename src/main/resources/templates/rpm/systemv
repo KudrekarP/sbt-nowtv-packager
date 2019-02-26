@@ -1,0 +1,122 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides: ${{app_name}}
+# Required-Start: ${{start_facilities}}
+# Required-Stop: ${{stop_facilities}}
+# Default-Start: ${{start_runlevels}}
+# Default-Stop: ${{stop_runlevels}}
+# Should-Start:
+# Should-Stop:
+# Short-Description: ${{descr}}
+# Description: ${{descr}}
+### END INIT INFO
+
+# this replaces the built-in https://github.com/sbt/sbt-native-packager/blob/master/src/main/resources/com/typesafe/sbt/packager/archetypes/java_server/systemloader/systemv/start-rpm-template
+
+name="${{app_name}}"
+dir="${{chdir}}"
+logDir="$dir/logs"
+exec="$dir/bin/${{exec}}"
+
+pid_file="$dir/${{app_name}}.pid"
+stdout_log="$logDir/${{app_name}}.out"
+cmd="${exec} >> $stdout_log 2>&1"
+
+get_pid() {
+    cat "$pid_file"
+}
+
+remove_pid() {
+    if [ -f "$pid_file" ]; then
+        rm "$pid_file"
+    fi
+}
+
+is_running() {
+    [ -f "$pid_file" ] && ps `get_pid` > /dev/null 2>&1
+}
+
+if [ -e /etc/sysconfig/$name ]; then
+  . /etc/sysconfig/$name
+fi
+
+# Include monitors if installed
+for monitor in newrelic appdynamics ; do
+  if [ -e /etc/sysconfig/${monitor} ]; then
+    source /etc/sysconfig/${monitor}
+  fi
+done
+
+# remove -Dpidfile.path=/dev/null from JAVA_OPTS set by dev-ops (should be removed by them at some point)
+ENV_JAVA_OPTS=`echo $JAVA_OPTS | sed 's/-Dpidfile.path=[a-zA-Z/]*//'`
+
+export JAVA_OPTS="$ENV_JAVA_OPTS -Dpidfile.path=$pid_file"
+
+case "$1" in
+    start)
+    if is_running; then
+        echo "$name Already started"
+    else
+        echo "Starting $name"
+        cd "$dir"
+        sudo -E -u "${{daemon_user}}" sh -c "$cmd &"
+    fi
+    ;;
+    stop)
+    if is_running; then
+        echo -n "Stopping $name.."
+        kill `get_pid`
+        for i in {1..10}
+        do
+            if ! is_running; then
+                break
+            fi
+
+            echo -n "."
+            sleep 1
+        done
+        echo
+
+        if is_running; then
+            echo "Not stopped; may still be shutting down or shutdown may have failed"
+
+            echo "Attempting force close"
+            kill -9 `get_pid`
+            sleep 1
+            if ! is_running; then
+                echo "$name Stopped"
+                remove_pid
+            fi
+
+            exit 1
+        else
+            echo "$name Stopped"
+            remove_pid
+        fi
+    else
+        echo "Not running"
+    fi
+    ;;
+    restart)
+    $0 stop
+    if is_running; then
+        echo "Unable to stop $name , will not attempt to start"
+        exit 1
+    fi
+    $0 start
+    ;;
+    status)
+    if is_running; then
+        echo "$name Running"
+    else
+        echo "$name Stopped"
+        exit 1
+    fi
+    ;;
+    *)
+    echo "Usage: $0 {prepare|start|stop|restart|status}"
+    exit 1
+    ;;
+esac
+
+exit 0

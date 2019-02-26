@@ -1,0 +1,6 @@
+# replaces the default https://github.com/sbt/sbt-native-packager/blob/master/src/main/resources/com/typesafe/sbt/packager/archetypes/java_server/rpm/preun-template
+${{loader-functions}}
+
+echo "running --- preun"
+echo "...... Initial removal from system - Shutting down ${{app_name}}"
+stopService ${{app_name}} || echo "Could not stop ${{app_name}}"

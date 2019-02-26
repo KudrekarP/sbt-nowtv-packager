@@ -1,0 +1,18 @@
+# replaces the default https://github.com/sbt/sbt-native-packager/blob/master/src/main/resources/com/typesafe/sbt/packager/archetypes/java_server/rpm/post-template
+${{loader-functions}}
+
+# Scriptlet syntax: http://fedoraproject.org/wiki/Packaging:ScriptletSnippets#Syntax
+# $1 == 1 is first installation and $1 == 2 is upgrade
+
+echo "running --- postinst: $1"
+if [ "$1" = "1" -o "$1" = "configure" ]; then
+
+  echo "creating log directory: ${{chdir}}/logs"
+  [ -d ${{chdir}}/logs ] || mkdir -p ${{chdir}}/logs
+  chown ${{daemon_user}}:${{daemon_group}} ${{chdir}}/logs
+
+  startService ${{app_name}} || echo "Could not start ${{app_name}}"
+elif [ "$1" = "2" -o "$1" = "upgrade" ]; then
+  echo "...... Updating ${{app_name}}"
+  startService ${{app_name}} || echo "Could not start ${{app_name}}"
+fi

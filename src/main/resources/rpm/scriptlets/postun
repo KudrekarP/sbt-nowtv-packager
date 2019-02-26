@@ -1,0 +1,2 @@
+# replaces the default https://github.com/sbt/sbt-native-packager/blob/master/src/main/resources/com/typesafe/sbt/packager/archetypes/java_server/rpm/postun-template
+echo "running --- postun"
